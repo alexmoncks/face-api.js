@@ -1,8 +1,7 @@
 import * as tf from '@tensorflow/tfjs-core';
 
-import { createCanvasFromMedia, IDimensions, isTensor3D, NetInput, Point, TMediaElement, toNetInput } from '../../../src';
-import { FaceLandmarks68 } from '../../../src/classes/FaceLandmarks68';
-import { loadImage, loadJson } from '../../env';
+import { createCanvasFromMedia, IDimensions, FaceLandmarks68, utils, NetInput, Point, TMediaElement, toNetInput } from '../../../src';
+import { getTestEnv } from '../../env';
 import {
   describeWithBackend,
   describeWithNets,
@@ -13,7 +12,7 @@ import {
 
 function getInputDims (input: tf.Tensor | TMediaElement): IDimensions {
   if (input instanceof tf.Tensor) {
-    const [height, width] = input.shape.slice(isTensor3D(input) ? 0 : 1)
+    const [height, width] = input.shape.slice(utils.isTensor3D(input) ? 0 : 1)
     return { width, height }
   }
   return input
@@ -29,12 +28,12 @@ describeWithBackend('faceLandmark68Net', () => {
   let faceLandmarkPositionsRect: Point[]
 
   beforeAll(async () => {
-    imgEl1 = await loadImage('test/images/face1.png')
-    imgEl2 = await loadImage('test/images/face2.png')
-    imgElRect = await loadImage('test/images/face_rectangular.png')
-    faceLandmarkPositions1 = await loadJson<Point[]>('test/data/faceLandmarkPositions1.json')
-    faceLandmarkPositions2 = await loadJson<Point[]>('test/data/faceLandmarkPositions2.json')
-    faceLandmarkPositionsRect = await loadJson<Point[]>('test/data/faceLandmarkPositionsRect.json')
+    imgEl1 = await getTestEnv().loadImage('test/images/face1.png')
+    imgEl2 = await getTestEnv().loadImage('test/images/face2.png')
+    imgElRect = await getTestEnv().loadImage('test/images/face_rectangular.png')
+    faceLandmarkPositions1 = await getTestEnv().loadJson<Point[]>('test/data/faceLandmarkPositions1.json')
+    faceLandmarkPositions2 = await getTestEnv().loadJson<Point[]>('test/data/faceLandmarkPositions2.json')
+    faceLandmarkPositionsRect = await getTestEnv().loadJson<Point[]>('test/data/faceLandmarkPositionsRect.json')
   })
 
   describeWithNets('quantized weights', { withFaceLandmark68Net: { quantized: true } }, ({ faceLandmark68Net }) => {

@@ -1,16 +1,24 @@
 import * as tf from '@tensorflow/tfjs-core';
 
-import * as faceapi from '../src';
-import { FaceRecognitionNet, IPoint, IRect, Mtcnn, TinyYolov2 } from '../src/';
-import { AgeGenderNet } from '../src/ageGenderNet/AgeGenderNet';
-import { FaceDetection } from '../src/classes/FaceDetection';
-import { FaceLandmarks } from '../src/classes/FaceLandmarks';
-import { FaceExpressionNet } from '../src/faceExpressionNet/FaceExpressionNet';
-import { FaceLandmark68Net } from '../src/faceLandmarkNet/FaceLandmark68Net';
-import { FaceLandmark68TinyNet } from '../src/faceLandmarkNet/FaceLandmark68TinyNet';
-import { SsdMobilenetv1 } from '../src/ssdMobilenetv1/SsdMobilenetv1';
-import { TinyFaceDetector } from '../src/tinyFaceDetector/TinyFaceDetector';
-import { initNet, loadJson } from './env';
+import {
+  AgeGenderNet,
+  FaceDetection,
+  FaceExpressionNet,
+  FaceLandmark68Net,
+  FaceLandmark68TinyNet,
+  FaceLandmarks,
+  FaceRecognitionNet,
+  IPoint,
+  IRect,
+  LabeledBox,
+  Mtcnn,
+  nets,
+  PredictedBox,
+  SsdMobilenetv1,
+  TinyFaceDetector,
+  TinyYolov2,
+} from '../src';
+import { getTestEnv } from './env';
 
 export function expectMaxDelta(val1: number, val2: number, maxDelta: number) {
   expect(Math.abs(val1 - val2)).toBeLessThanOrEqual(maxDelta)
@@ -80,6 +88,41 @@ export function sortByFaceDetection<T extends { detection: FaceDetection }>(objs
   return sortByDistanceToOrigin(objs, d => d.detection.box)
 }
 
+export function fakeTensor3d(dtype: tf.DataType = 'int32') {
+  return tf.tensor3d([0], [1, 1, 1], dtype)
+}
+
+export function zeros(length: number): Float32Array {
+  return new Float32Array(length)
+}
+
+export function ones(length: number): Float32Array {
+  return new Float32Array(length).fill(1)
+}
+
+export function createLabeledBox(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  classLabel: number = 0
+): LabeledBox {
+  return new LabeledBox({ x, y, width, height }, classLabel)
+}
+
+export function createPredictedBox(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  classLabel: number = 0,
+  score: number = 1.0,
+  classScore: number = 1.0
+): PredictedBox {
+  return new PredictedBox({ x, y, width, height }, classLabel, score, classScore)
+}
+
+
 export type ExpectedFaceDetectionWithLandmarks = {
   detection: IRect
   landmarks: IPoint[]
@@ -93,8 +136,8 @@ export async function assembleExpectedFullFaceDescriptions(
   detections: IRect[],
   landmarksFile: string = 'facesFaceLandmarkPositions.json'
 ): Promise<ExpectedFullFaceDescription[]> {
-  const landmarks = await loadJson<any[]>(`test/data/${landmarksFile}`)
-  const descriptors = await loadJson<any[]>('test/data/facesFaceDescriptors.json')
+  const landmarks = await getTestEnv().loadJson<any[]>(`test/data/${landmarksFile}`)
+  const descriptors = await getTestEnv().loadJson<any[]>('test/data/facesFaceDescriptors.json')
 
   return detections.map((detection, i) => ({
     detection,
@@ -191,7 +234,7 @@ export function describeWithNets(
       faceExpressionNet,
       ageGenderNet,
       tinyYolov2
-    } = faceapi.nets
+    } = nets
 
     beforeAll(async () => {
       const {
@@ -211,63 +254,63 @@ export function describeWithNets(
       } = options
 
       if (withSsdMobilenetv1 || withAllFacesSsdMobilenetv1) {
-        await initNet<SsdMobilenetv1>(
+        await getTestEnv().initNet<SsdMobilenetv1>(
           ssdMobilenetv1,
           !!withSsdMobilenetv1 && !withSsdMobilenetv1.quantized && 'ssd_mobilenetv1_model.weights'
         )
       }
 
       if (withTinyFaceDetector || withAllFacesTinyFaceDetector) {
-        await initNet<TinyFaceDetector>(
+        await getTestEnv().initNet<TinyFaceDetector>(
           tinyFaceDetector,
           !!withTinyFaceDetector && !withTinyFaceDetector.quantized && 'tiny_face_detector_model.weights'
         )
       }
 
       if (withFaceLandmark68Net || withAllFacesSsdMobilenetv1  || withAllFacesTinyFaceDetector|| withAllFacesMtcnn || withAllFacesTinyYolov2) {
-        await initNet<FaceLandmark68Net>(
+        await getTestEnv().initNet<FaceLandmark68Net>(
           faceLandmark68Net,
           !!withFaceLandmark68Net && !withFaceLandmark68Net.quantized && 'face_landmark_68_model.weights'
         )
       }
 
       if (withFaceLandmark68TinyNet) {
-        await initNet<FaceLandmark68TinyNet>(
+        await getTestEnv().initNet<FaceLandmark68TinyNet>(
           faceLandmark68TinyNet,
           !!withFaceLandmark68TinyNet && !withFaceLandmark68TinyNet.quantized && 'face_landmark_68_tiny_model.weights'
         )
       }
 
       if (withFaceRecognitionNet || withAllFacesSsdMobilenetv1  || withAllFacesTinyFaceDetector|| withAllFacesMtcnn || withAllFacesTinyYolov2) {
-        await initNet<FaceRecognitionNet>(
+        await getTestEnv().initNet<FaceRecognitionNet>(
           faceRecognitionNet,
           !!withFaceRecognitionNet && !withFaceRecognitionNet.quantized && 'face_recognition_model.weights'
         )
       }
 
       if (withMtcnn || withAllFacesMtcnn) {
-        await initNet<Mtcnn>(
+        await getTestEnv().initNet<Mtcnn>(
           mtcnn,
           !!withMtcnn && !withMtcnn.quantized && 'mtcnn_model.weights'
         )
       }
 
       if (withFaceExpressionNet) {
-        await initNet<FaceExpressionNet>(
+        await getTestEnv().initNet<FaceExpressionNet>(
           faceExpressionNet,
           !!withFaceExpressionNet && !withFaceExpressionNet.quantized && 'face_expression_model.weights'
         )
       }
 
       if (withAgeGenderNet) {
-        await initNet<AgeGenderNet>(
+        await getTestEnv().initNet<AgeGenderNet>(
           ageGenderNet,
           !!withAgeGenderNet && !withAgeGenderNet.quantized && 'age_gender_model.weights'
         )
       }
 
       if (withTinyYolov2 || withAllFacesTinyYolov2) {
-        await initNet<TinyYolov2>(
+        await getTestEnv().initNet<TinyYolov2>(
           tinyYolov2,
           !!withTinyYolov2 && !withTinyYolov2.quantized && 'tiny_yolov2_model.weights',
           true
